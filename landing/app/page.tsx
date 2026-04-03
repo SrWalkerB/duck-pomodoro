@@ -1,5 +1,67 @@
 import Image from "next/image";
 
+const GITHUB_REPO = "SrWalkerB/duck-pomodoro";
+const RELEASES_URL = `https://api.github.com/repos/${GITHUB_REPO}/releases`;
+
+type GitHubAsset = {
+  name: string;
+  browser_download_url: string;
+};
+
+type GitHubRelease = {
+  draft: boolean;
+  assets: GitHubAsset[];
+};
+
+export const revalidate = 300;
+
+async function getLatestReleaseAssets() {
+  try {
+    const response = await fetch(`${RELEASES_URL}?per_page=5`, {
+      headers: {
+        Accept: "application/vnd.github+json",
+      },
+      next: { revalidate },
+    });
+
+    if (!response.ok) {
+      return { linuxAsset: null, windowsAsset: null };
+    }
+
+    const releases = (await response.json()) as GitHubRelease[];
+    const latestRelease = releases.find((release) => !release.draft);
+
+    if (!latestRelease) {
+      return { linuxAsset: null, windowsAsset: null };
+    }
+
+    const linuxAsset =
+      latestRelease.assets.find((asset) =>
+        asset.name.toLowerCase().endsWith(".appimage"),
+      ) ||
+      latestRelease.assets.find((asset) =>
+        asset.name.toLowerCase().endsWith(".deb"),
+      ) ||
+      latestRelease.assets.find((asset) =>
+        asset.name.toLowerCase().endsWith(".rpm"),
+      ) ||
+      null;
+
+    const windowsAsset =
+      latestRelease.assets.find((asset) =>
+        asset.name.toLowerCase().endsWith(".exe"),
+      ) ||
+      latestRelease.assets.find((asset) =>
+        asset.name.toLowerCase().endsWith(".msi"),
+      ) ||
+      null;
+
+    return { linuxAsset, windowsAsset };
+  } catch {
+    return { linuxAsset: null, windowsAsset: null };
+  }
+}
+
 function TimerRingSVG({ className }: { className?: string }) {
   return (
     <svg
@@ -127,7 +189,11 @@ function StatBlock({
   );
 }
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const { linuxAsset, windowsAsset } = await getLatestReleaseAssets();
+  const releasesPageUrl = `https://github.com/${GITHUB_REPO}/releases`;
+  const primaryDownloadUrl = linuxAsset?.browser_download_url || releasesPageUrl;
+
   return (
     <main className="relative overflow-hidden">
       {/* ── HERO ── */}
@@ -215,7 +281,9 @@ export default function LandingPage() {
 
           <div className="animate-fade-in-up delay-400 mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <a
-              href="#download"
+              href={primaryDownloadUrl}
+              target="_blank"
+              rel="noopener noreferrer"
               className="group relative inline-flex items-center gap-3 overflow-hidden rounded-full bg-accent-red px-8 py-4 text-base font-semibold text-white transition-all hover:shadow-2xl hover:shadow-accent-red/30"
             >
               <svg
@@ -673,12 +741,17 @@ export default function LandingPage() {
           </h2>
           <p className="mx-auto mt-6 max-w-lg text-lg text-muted">
             Baixe o Duck Pomodoro e comece a transformar suas sessões de
-            trabalho. Disponível para Linux — Windows em breve.
+            trabalho.{" "}
+            {windowsAsset
+              ? "Disponível para Linux e Windows."
+              : "Disponível para Linux — Windows em breve."}
           </p>
 
           <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <a
-              href="#"
+              href={linuxAsset?.browser_download_url || releasesPageUrl}
+              target="_blank"
+              rel="noopener noreferrer"
               className="group flex items-center gap-3 rounded-2xl border border-border bg-surface px-8 py-5 transition-all hover:border-accent-red/40 hover:shadow-xl hover:shadow-accent-red/10"
             >
               <svg
@@ -695,26 +768,49 @@ export default function LandingPage() {
                   Download para Linux
                 </div>
                 <div className="text-xs text-muted">
-                  .deb, .rpm, .AppImage
+                  {linuxAsset?.name || ".deb, .rpm, .AppImage"}
                 </div>
               </div>
             </a>
 
-            <div className="flex items-center gap-3 rounded-2xl border border-border/50 bg-surface/50 px-8 py-5 opacity-50">
-              <svg
-                width="28"
-                height="28"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                className="text-foreground"
+            {windowsAsset ? (
+              <a
+                href={windowsAsset.browser_download_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex items-center gap-3 rounded-2xl border border-border bg-surface px-8 py-5 transition-all hover:border-accent-red/40 hover:shadow-xl hover:shadow-accent-red/10"
               >
-                <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801" />
-              </svg>
-              <div className="text-left">
-                <div className="text-sm font-semibold">Windows</div>
-                <div className="text-xs text-muted">Em breve</div>
+                <svg
+                  width="28"
+                  height="28"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  className="text-foreground"
+                >
+                  <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801" />
+                </svg>
+                <div className="text-left">
+                  <div className="text-sm font-semibold">Download Windows</div>
+                  <div className="text-xs text-muted">{windowsAsset.name}</div>
+                </div>
+              </a>
+            ) : (
+              <div className="flex items-center gap-3 rounded-2xl border border-border/50 bg-surface/50 px-8 py-5 opacity-50">
+                <svg
+                  width="28"
+                  height="28"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  className="text-foreground"
+                >
+                  <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801" />
+                </svg>
+                <div className="text-left">
+                  <div className="text-sm font-semibold">Windows</div>
+                  <div className="text-xs text-muted">Em breve</div>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </section>
