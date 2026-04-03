@@ -8,7 +8,23 @@ interface UseTimerOptions {
   onSessionComplete?: () => void;
 }
 
-export function useTimer({ settings, onSessionComplete }: UseTimerOptions) {
+export interface TimerController {
+  timeRemaining: number;
+  timerState: TimerState;
+  sessionType: SessionType;
+  completedPomodoros: number;
+  currentTaskId: number | null;
+  totalInCycle: number;
+  start: (taskId?: number) => void;
+  pause: () => void;
+  resume: () => void;
+  stop: () => Promise<void>;
+  skip: () => Promise<void>;
+  reset: () => void;
+  selectTask: (taskId: number | null) => void;
+}
+
+export function useTimer({ settings, onSessionComplete }: UseTimerOptions): TimerController {
   const [timeRemaining, setTimeRemaining] = useState(settings.work_duration);
   const [timerState, setTimerState] = useState<TimerState>("idle");
   const [sessionType, setSessionType] = useState<SessionType>("work");

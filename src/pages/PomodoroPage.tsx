@@ -12,8 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useTimer } from "@/hooks/useTimer";
-import { useAmbientSound } from "@/hooks/useAmbientSound";
+import type { TimerController } from "@/hooks/useTimer";
 import { BUILT_IN_SOUNDS } from "@/lib/sounds";
 import type { Settings, Task, TimerMode, UserSound } from "@/lib/types";
 
@@ -21,7 +20,9 @@ interface PomodoroPageProps {
   settings: Settings;
   tasks: Task[];
   userSounds: UserSound[];
-  onSessionComplete: () => void;
+  timer: TimerController;
+  isMuted: boolean;
+  onToggleMute: () => void;
   onChangeSoundSource: (source: string) => void;
 }
 
@@ -29,26 +30,12 @@ export function PomodoroPage({
   settings,
   tasks,
   userSounds,
-  onSessionComplete,
+  timer,
+  isMuted,
+  onToggleMute,
   onChangeSoundSource,
 }: PomodoroPageProps) {
   const [mode, setMode] = useState<TimerMode>("simple");
-  const timer = useTimer({ settings, onSessionComplete });
-
-  const userSoundFilenames = useMemo(() => {
-    const map = new Map<number, string>();
-    for (const s of userSounds) {
-      map.set(s.id, s.filename);
-    }
-    return map;
-  }, [userSounds]);
-
-  const { isMuted, toggleMute } = useAmbientSound({
-    timerState: timer.timerState,
-    sessionType: timer.sessionType,
-    settings,
-    userSoundFilenames,
-  });
 
   const soundItems = useMemo(() => {
     const map: Record<string, string> = {};
@@ -106,7 +93,7 @@ export function PomodoroPage({
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={toggleMute}
+            onClick={onToggleMute}
             className="text-text-secondary hover:text-text-primary transition-colors"
             title={isMuted ? "Ativar som" : "Silenciar"}
           >

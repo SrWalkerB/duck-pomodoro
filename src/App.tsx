@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Layout } from "@/components/Layout";
 import { PomodoroPage } from "@/pages/PomodoroPage";
 import { TasksPage } from "@/pages/TasksPage";
@@ -7,6 +7,8 @@ import { StatsPage } from "@/pages/StatsPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { useSettings } from "@/hooks/useSettings";
 import { useTasks } from "@/hooks/useTasks";
+import { useTimer } from "@/hooks/useTimer";
+import { useAmbientSound } from "@/hooks/useAmbientSound";
 import { useUserSounds } from "@/hooks/useUserSounds";
 import { getDb } from "@/lib/database";
 import { ensureNotificationPermission } from "@/lib/notifications";
@@ -30,6 +32,23 @@ export default function App() {
     taskStore.reload();
   }, [taskStore]);
 
+  const timer = useTimer({ settings, onSessionComplete: handleSessionComplete });
+
+  const userSoundFilenames = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const s of userSounds) {
+      map.set(s.id, s.filename);
+    }
+    return map;
+  }, [userSounds]);
+
+  const ambientSound = useAmbientSound({
+    timerState: timer.timerState,
+    sessionType: timer.sessionType,
+    settings,
+    userSoundFilenames,
+  });
+
   if (!dbReady || settingsLoading) {
     return (
       <div className="flex h-screen items-center justify-center bg-background text-text-muted">
@@ -45,7 +64,9 @@ export default function App() {
           settings={settings}
           tasks={taskStore.activeTasks}
           userSounds={userSounds}
-          onSessionComplete={handleSessionComplete}
+          timer={timer}
+          isMuted={ambientSound.isMuted}
+          onToggleMute={ambientSound.toggleMute}
           onChangeSoundSource={(source) =>
             updateSettings({ ...settings, sound_source: source })
           }

@@ -6,16 +6,34 @@ const RELEASES_URL = `https://api.github.com/repos/${GITHUB_REPO}/releases`;
 type GitHubAsset = {
   name: string;
   browser_download_url: string;
+  size: number;
 };
 
 type GitHubRelease = {
   draft: boolean;
+  prerelease: boolean;
+  tag_name: string;
+  html_url: string;
   assets: GitHubAsset[];
+};
+
+type DownloadItem = {
+  ext: string;
+  sizeLabel: string;
+  url: string;
+  name: string;
 };
 
 export const revalidate = 300;
 
 async function getLatestReleaseAssets() {
+  const emptyResult = {
+    releaseTag: null as string | null,
+    releaseUrl: `https://github.com/${GITHUB_REPO}/releases`,
+    linuxItems: [] as DownloadItem[],
+    windowsItems: [] as DownloadItem[],
+  };
+
   try {
     const response = await fetch(`${RELEASES_URL}?per_page=5`, {
       headers: {
@@ -25,40 +43,64 @@ async function getLatestReleaseAssets() {
     });
 
     if (!response.ok) {
-      return { linuxAsset: null, windowsAsset: null };
+      return emptyResult;
     }
 
     const releases = (await response.json()) as GitHubRelease[];
     const latestRelease = releases.find((release) => !release.draft);
 
     if (!latestRelease) {
-      return { linuxAsset: null, windowsAsset: null };
+      return emptyResult;
     }
 
-    const linuxAsset =
-      latestRelease.assets.find((asset) =>
-        asset.name.toLowerCase().endsWith(".appimage"),
-      ) ||
-      latestRelease.assets.find((asset) =>
-        asset.name.toLowerCase().endsWith(".deb"),
-      ) ||
-      latestRelease.assets.find((asset) =>
-        asset.name.toLowerCase().endsWith(".rpm"),
-      ) ||
-      null;
+    const extensionPriority = [".rpm", ".appimage", ".deb", ".exe", ".msi"];
+    const getExtension = (name: string) =>
+      extensionPriority.find((ext) => name.toLowerCase().endsWith(ext)) || null;
+    const formatSize = (sizeInBytes: number) =>
+      `${(sizeInBytes / (1024 * 1024)).toFixed(1)} MB`;
 
-    const windowsAsset =
-      latestRelease.assets.find((asset) =>
-        asset.name.toLowerCase().endsWith(".exe"),
-      ) ||
-      latestRelease.assets.find((asset) =>
-        asset.name.toLowerCase().endsWith(".msi"),
-      ) ||
-      null;
+    const linuxItems = latestRelease.assets
+      .map((asset) => {
+        const ext = getExtension(asset.name);
+        if (!ext || ![".rpm", ".appimage", ".deb"].includes(ext)) return null;
+        return {
+          ext,
+          sizeLabel: formatSize(asset.size),
+          url: asset.browser_download_url,
+          name: asset.name,
+        };
+      })
+      .filter((item): item is DownloadItem => item !== null)
+      .sort(
+        (a, b) =>
+          extensionPriority.indexOf(a.ext) - extensionPriority.indexOf(b.ext),
+      );
 
-    return { linuxAsset, windowsAsset };
+    const windowsItems = latestRelease.assets
+      .map((asset) => {
+        const ext = getExtension(asset.name);
+        if (!ext || ![".exe", ".msi"].includes(ext)) return null;
+        return {
+          ext,
+          sizeLabel: formatSize(asset.size),
+          url: asset.browser_download_url,
+          name: asset.name,
+        };
+      })
+      .filter((item): item is DownloadItem => item !== null)
+      .sort(
+        (a, b) =>
+          extensionPriority.indexOf(a.ext) - extensionPriority.indexOf(b.ext),
+      );
+
+    return {
+      releaseTag: latestRelease.tag_name,
+      releaseUrl: latestRelease.html_url || emptyResult.releaseUrl,
+      linuxItems,
+      windowsItems,
+    };
   } catch {
-    return { linuxAsset: null, windowsAsset: null };
+    return emptyResult;
   }
 }
 
@@ -190,9 +232,9 @@ function StatBlock({
 }
 
 export default async function LandingPage() {
-  const { linuxAsset, windowsAsset } = await getLatestReleaseAssets();
-  const releasesPageUrl = `https://github.com/${GITHUB_REPO}/releases`;
-  const primaryDownloadUrl = linuxAsset?.browser_download_url || releasesPageUrl;
+  const { releaseTag, releaseUrl, linuxItems, windowsItems } =
+    await getLatestReleaseAssets();
+  const primaryDownloadUrl = linuxItems[0]?.url || releaseUrl;
 
   return (
     <main className="relative overflow-hidden">
@@ -742,60 +784,73 @@ export default async function LandingPage() {
           <p className="mx-auto mt-6 max-w-lg text-lg text-muted">
             Baixe o Duck Pomodoro e comece a transformar suas sessões de
             trabalho.{" "}
-            {windowsAsset
+            {windowsItems.length > 0
               ? "Disponível para Linux e Windows."
               : "Disponível para Linux — Windows em breve."}
           </p>
-
-          <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
-            <a
-              href={linuxAsset?.browser_download_url || releasesPageUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="group flex items-center gap-3 rounded-2xl border border-border bg-surface px-8 py-5 transition-all hover:border-accent-red/40 hover:shadow-xl hover:shadow-accent-red/10"
-            >
-              <svg
-                width="28"
-                height="28"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                className="text-foreground"
-              >
-                <path d="M12.504 0c-.155 0-.315.008-.48.021-4.226.333-3.105 4.807-3.17 6.298-.076 1.092-.3 1.953-1.05 3.02-.885 1.051-2.127 2.75-2.716 4.521-.278.832-.41 1.684-.287 2.489a.424.424 0 00-.11.135c-.26.268-.45.6-.663.839-.199.199-.485.267-.797.4-.313.136-.658.269-.864.68-.09.189-.136.394-.132.602 0 .199.027.4.055.536.058.399.116.728.04.97-.249.68-.28 1.145-.106 1.484.174.334.535.47.94.601.81.2 1.91.135 2.774.6.926.466 1.866.67 2.616.47.526-.116.97-.464 1.208-.946.587-.003 1.23-.269 2.26-.334.699-.058 1.574.267 2.577.2.025.134.063.198.114.333l.003.003c.391.778 1.113 1.368 1.884 1.43.39.033.77-.396 1.03-.899.26-.504.34-1.07.26-1.49l-.003-.04c.383-.278.558-.676.623-1.093.065-.417.03-.858-.09-1.252-.118-.39-.298-.8-.494-1.07-.103-.15-.218-.263-.34-.335.26-.137.47-.331.636-.56.38-.53.536-1.185.509-1.882-.027-.7-.196-1.448-.517-2.1-.445-.906-.845-1.545-1.103-2.3-.26-.756-.355-1.624-.173-2.873.203-1.448.096-2.468-.218-3.233-.314-.765-.755-1.267-1.168-1.569-.47-.345-.878-.525-1.077-.666-.248-.178-.301-.25-.457-.607-.376-.875-.677-1.553-1.168-2.056-.487-.5-1.14-.808-2.117-.808z" />
-              </svg>
-              <div className="text-left">
-                <div className="text-sm font-semibold">
-                  Download para Linux
-                </div>
-                <div className="text-xs text-muted">
-                  {linuxAsset?.name || ".deb, .rpm, .AppImage"}
-                </div>
-              </div>
-            </a>
-
-            {windowsAsset ? (
+          {releaseTag ? (
+            <p className="mt-2 text-sm text-muted">
+              Release atual:{" "}
               <a
-                href={windowsAsset.browser_download_url}
+                href={releaseUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group flex items-center gap-3 rounded-2xl border border-border bg-surface px-8 py-5 transition-all hover:border-accent-red/40 hover:shadow-xl hover:shadow-accent-red/10"
+                className="font-medium text-foreground underline-offset-4 hover:underline"
               >
-                <svg
-                  width="28"
-                  height="28"
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
-                  className="text-foreground"
-                >
-                  <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801" />
-                </svg>
-                <div className="text-left">
-                  <div className="text-sm font-semibold">Download Windows</div>
-                  <div className="text-xs text-muted">{windowsAsset.name}</div>
-                </div>
+                {releaseTag}
               </a>
-            ) : (
-              <div className="flex items-center gap-3 rounded-2xl border border-border/50 bg-surface/50 px-8 py-5 opacity-50">
+            </p>
+          ) : null}
+
+          <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
+            <div className="w-full max-w-[360px] rounded-2xl border border-border bg-surface px-6 py-5 transition-all hover:border-accent-red/40 hover:shadow-xl hover:shadow-accent-red/10">
+              <div className="mb-3 flex items-center gap-3">
+                <svg
+                  width="28"
+                  height="28"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  className="text-foreground"
+                >
+                  <path d="M12.504 0c-.155 0-.315.008-.48.021-4.226.333-3.105 4.807-3.17 6.298-.076 1.092-.3 1.953-1.05 3.02-.885 1.051-2.127 2.75-2.716 4.521-.278.832-.41 1.684-.287 2.489a.424.424 0 00-.11.135c-.26.268-.45.6-.663.839-.199.199-.485.267-.797.4-.313.136-.658.269-.864.68-.09.189-.136.394-.132.602 0 .199.027.4.055.536.058.399.116.728.04.97-.249.68-.28 1.145-.106 1.484.174.334.535.47.94.601.81.2 1.91.135 2.774.6.926.466 1.866.67 2.616.47.526-.116.97-.464 1.208-.946.587-.003 1.23-.269 2.26-.334.699-.058 1.574.267 2.577.2.025.134.063.198.114.333l.003.003c.391.778 1.113 1.368 1.884 1.43.39.033.77-.396 1.03-.899.26-.504.34-1.07.26-1.49l-.003-.04c.383-.278.558-.676.623-1.093.065-.417.03-.858-.09-1.252-.118-.39-.298-.8-.494-1.07-.103-.15-.218-.263-.34-.335.26-.137.47-.331.636-.56.38-.53.536-1.185.509-1.882-.027-.7-.196-1.448-.517-2.1-.445-.906-.845-1.545-1.103-2.3-.26-.756-.355-1.624-.173-2.873.203-1.448.096-2.468-.218-3.233-.314-.765-.755-1.267-1.168-1.569-.47-.345-.878-.525-1.077-.666-.248-.178-.301-.25-.457-.607-.376-.875-.677-1.553-1.168-2.056-.487-.5-1.14-.808-2.117-.808z" />
+                </svg>
+                <div className="text-sm font-semibold">Download para Linux</div>
+              </div>
+              {linuxItems.length > 0 ? (
+                <div className="space-y-1.5">
+                  {linuxItems.map((item) => (
+                    <a
+                      key={item.name}
+                      href={item.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-between rounded-md px-2 py-1 text-xs text-muted transition-colors hover:bg-black/20 hover:text-foreground"
+                    >
+                      <span>{item.ext}</span>
+                      <span>{item.sizeLabel}</span>
+                    </a>
+                  ))}
+                </div>
+              ) : (
+                <a
+                  href={releaseUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-muted underline-offset-4 hover:underline"
+                >
+                  Ver releases no GitHub
+                </a>
+              )}
+            </div>
+
+            <div
+              className={`w-full max-w-[360px] rounded-2xl border px-6 py-5 transition-all ${
+                windowsItems.length > 0
+                  ? "border-border bg-surface hover:border-accent-red/40 hover:shadow-xl hover:shadow-accent-red/10"
+                  : "border-border/50 bg-surface/50 opacity-70"
+              }`}
+            >
+              <div className="mb-3 flex items-center gap-3">
                 <svg
                   width="28"
                   height="28"
@@ -805,12 +860,27 @@ export default async function LandingPage() {
                 >
                   <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801" />
                 </svg>
-                <div className="text-left">
-                  <div className="text-sm font-semibold">Windows</div>
-                  <div className="text-xs text-muted">Em breve</div>
-                </div>
+                <div className="text-sm font-semibold">Download Windows</div>
               </div>
-            )}
+              {windowsItems.length > 0 ? (
+                <div className="space-y-1.5">
+                  {windowsItems.map((item) => (
+                    <a
+                      key={item.name}
+                      href={item.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-between rounded-md px-2 py-1 text-xs text-muted transition-colors hover:bg-black/20 hover:text-foreground"
+                    >
+                      <span>{item.ext}</span>
+                      <span>{item.sizeLabel}</span>
+                    </a>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-xs text-muted">Em breve</div>
+              )}
+            </div>
           </div>
         </div>
       </section>

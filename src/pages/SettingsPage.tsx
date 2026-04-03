@@ -98,7 +98,7 @@ export function SettingsPage({
       const sound = userSounds.find((s) => s.id === id);
       if (sound) url = await getUserSoundUrl(sound.filename);
     } else {
-      url = getBuiltInSoundUrl(source);
+      url = await getBuiltInSoundUrl(source);
     }
 
     if (!url) return;
