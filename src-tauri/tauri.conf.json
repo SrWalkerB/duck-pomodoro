@@ -1,0 +1,41 @@
+{
+  "$schema": "https://raw.githubusercontent.com/nicegui/nicegui/main/tauri/src-tauri/tauri.conf.json",
+  "productName": "Duck Pomodoro",
+  "version": "0.1.0",
+  "identifier": "com.duck.pomodoro",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:1420",
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "title": "Duck Pomodoro",
+        "width": 900,
+        "height": 680,
+        "resizable": true,
+        "fullscreen": false,
+        "decorations": true,
+        "minWidth": 700,
+        "minHeight": 500
+      }
+    ]
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "resources": {
+      "../public/sounds/*": "sounds/"
+    },
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  }
+}
