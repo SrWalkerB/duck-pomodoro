@@ -1,5 +1,7 @@
 import Image from "next/image";
 
+import { PrimaryDownloadLink } from "./PrimaryDownloadLink";
+
 const GITHUB_REPO = "SrWalkerB/duck-pomodoro";
 const RELEASES_URL = `https://api.github.com/repos/${GITHUB_REPO}/releases`;
 
@@ -53,7 +55,7 @@ async function getLatestReleaseAssets() {
       return emptyResult;
     }
 
-    const extensionPriority = [".rpm", ".appimage", ".deb", ".exe", ".msi"];
+    const extensionPriority = [".deb", ".appimage", ".rpm", ".exe", ".msi"];
     const getExtension = (name: string) =>
       extensionPriority.find((ext) => name.toLowerCase().endsWith(ext)) || null;
     const formatSize = (sizeInBytes: number) =>
@@ -234,7 +236,8 @@ function StatBlock({
 export default async function LandingPage() {
   const { releaseTag, releaseUrl, linuxItems, windowsItems } =
     await getLatestReleaseAssets();
-  const primaryDownloadUrl = linuxItems[0]?.url || releaseUrl;
+  const linuxPrimaryUrl = linuxItems[0]?.url ?? null;
+  const windowsPrimaryUrl = windowsItems[0]?.url ?? null;
 
   return (
     <main className="relative overflow-hidden">
@@ -322,10 +325,10 @@ export default async function LandingPage() {
           </p>
 
           <div className="animate-fade-in-up delay-400 mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
-            <a
-              href={primaryDownloadUrl}
-              target="_blank"
-              rel="noopener noreferrer"
+            <PrimaryDownloadLink
+              windowsUrl={windowsPrimaryUrl}
+              linuxUrl={linuxPrimaryUrl}
+              fallbackUrl={releaseUrl}
               className="group relative inline-flex items-center gap-3 overflow-hidden rounded-full bg-accent-red px-8 py-4 text-base font-semibold text-white transition-all hover:shadow-2xl hover:shadow-accent-red/30"
             >
               <svg
@@ -343,7 +346,7 @@ export default async function LandingPage() {
                 <line x1="12" y1="15" x2="12" y2="3" />
               </svg>
               Baixar gratuitamente
-            </a>
+            </PrimaryDownloadLink>
             <a
               href="https://github.com/SrWalkerB/duck-pomodoro"
               target="_blank"
