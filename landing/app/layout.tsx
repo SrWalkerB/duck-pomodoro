@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Analytics } from "@vercel/analytics/react";
 import { Geist } from "next/font/google";
 import { Bricolage_Grotesque } from "next/font/google";
 import "./globals.css";
@@ -31,7 +32,10 @@ export default function RootLayout({
       lang="pt-BR"
       className={`${geistSans.variable} ${bricolage.variable} antialiased`}
     >
-      <body className="min-h-screen">{children}</body>
+      <body className="min-h-screen">
+        {children}
+        <Analytics />
+      </body>
     </html>
   );
 }
