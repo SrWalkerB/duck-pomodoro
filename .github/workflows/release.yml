@@ -57,8 +57,8 @@ jobs:
       - name: Validate updater config
         shell: bash
         run: |
-          test -n "${{ vars.TAURI_UPDATER_PROD_ENDPOINT }}"
-          test -n "${{ vars.TAURI_UPDATER_PROD_PUBKEY }}"
+          test -n "${{ secrets.TAURI_UPDATER_PROD_ENDPOINT }}"
+          test -n "${{ secrets.TAURI_UPDATER_PROD_PUBKEY }}"
           test -n "${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}"
 
       - name: Build and publish Tauri app
@@ -68,7 +68,7 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           TAURI_CONFIG: >-
-            {"bundle":{"createUpdaterArtifacts":true},"plugins":{"updater":{"pubkey":"${{ vars.TAURI_UPDATER_PROD_PUBKEY }}","endpoints":["${{ vars.TAURI_UPDATER_PROD_ENDPOINT }}"]}}}
+            {"bundle":{"createUpdaterArtifacts":true},"plugins":{"updater":{"pubkey":"${{ secrets.TAURI_UPDATER_PROD_PUBKEY }}","endpoints":["${{ secrets.TAURI_UPDATER_PROD_ENDPOINT }}"]}}}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "Duck Pomodoro ${{ github.ref_name }}"

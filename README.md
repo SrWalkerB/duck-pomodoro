@@ -92,6 +92,13 @@ export TAURI_SIGNING_PRIVATE_KEY="..."
 export TAURI_SIGNING_PRIVATE_KEY_PASSWORD="..."
 ```
 
+Secrets exigidos no GitHub Actions (release):
+
+- `TAURI_UPDATER_PROD_ENDPOINT`
+- `TAURI_UPDATER_PROD_PUBKEY`
+- `TAURI_SIGNING_PRIVATE_KEY`
+- `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`
+
 ## Scripts principais (raiz)
 
 - `npm run dev`: inicia frontend Vite
