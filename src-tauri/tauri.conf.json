@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/nicegui/nicegui/main/tauri/src-tauri/tauri.conf.json",
   "productName": "Duck Pomodoro",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "identifier": "com.duck.pomodoro",
   "build": {
     "frontendDist": "../dist",
