@@ -71,12 +71,35 @@ npm run build:linux
 npm run build:windows
 ```
 
+Build com updater configurado por ambiente:
+
+```bash
+# staging
+export TAURI_UPDATER_STAGING_ENDPOINT="https://.../latest.json"
+export TAURI_UPDATER_STAGING_PUBKEY="..."
+npm run build:staging
+
+# produção
+export TAURI_UPDATER_PROD_ENDPOINT="https://.../latest.json"
+export TAURI_UPDATER_PROD_PUBKEY="..."
+npm run build:prod
+```
+
+Assinatura do updater (secreto, usado no release/build assinado):
+
+```bash
+export TAURI_SIGNING_PRIVATE_KEY="..."
+export TAURI_SIGNING_PRIVATE_KEY_PASSWORD="..."
+```
+
 ## Scripts principais (raiz)
 
 - `npm run dev`: inicia frontend Vite
 - `npm run build`: build frontend
 - `npm run preview`: preview do build web
 - `npm run tauri <cmd>`: repassa comandos para o Tauri CLI
+- `npm run build:staging`: build Tauri com endpoint/pubkey de staging via env
+- `npm run build:prod`: build Tauri com endpoint/pubkey de produção via env
 
 ## Estrutura
 

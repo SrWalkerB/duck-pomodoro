@@ -26,6 +26,7 @@ export interface Settings {
   sound_enabled: number;
   sound_source: string;
   sound_volume: number;
+  auto_update_enabled: number;
 }
 
 export interface UserSound {
@@ -54,6 +55,7 @@ export const DEFAULT_SETTINGS: Settings = {
   sound_enabled: 0,
   sound_source: "rain",
   sound_volume: 0.7,
+  auto_update_enabled: 1,
 };
 
 export const SESSION_LABELS: Record<SessionType, string> = {

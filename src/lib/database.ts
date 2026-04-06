@@ -64,6 +64,7 @@ async function runMigrations(database: Database): Promise<void> {
     "sound_enabled INTEGER NOT NULL DEFAULT 0",
     "sound_source TEXT NOT NULL DEFAULT 'rain'",
     "sound_volume REAL NOT NULL DEFAULT 0.7",
+    "auto_update_enabled INTEGER NOT NULL DEFAULT 1",
   ];
   for (const col of soundColumns) {
     try {

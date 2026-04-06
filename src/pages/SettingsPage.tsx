@@ -1,5 +1,14 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { Save, RotateCcw, Upload, Trash2, Play, Square } from "lucide-react";
+import {
+  Save,
+  RotateCcw,
+  Upload,
+  Trash2,
+  Play,
+  Square,
+  RefreshCw,
+  Download,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -12,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { DEFAULT_SETTINGS, type Settings, type UserSound } from "@/lib/types";
 import { BUILT_IN_SOUNDS, getBuiltInSoundUrl, getUserSoundUrl } from "@/lib/sounds";
+import type { UpdaterState } from "@/lib/updater";
 
 interface SettingsPageProps {
   settings: Settings;
@@ -19,6 +29,12 @@ interface SettingsPageProps {
   userSounds: UserSound[];
   onImportSound: () => Promise<UserSound | null>;
   onDeleteSound: (id: number) => Promise<void>;
+  updaterState: UpdaterState;
+  updaterMessage: string | null;
+  currentVersion: string | null;
+  availableVersion: string | null;
+  onCheckForUpdates: () => Promise<void>;
+  onInstallUpdate: () => Promise<void>;
 }
 
 function DurationInput({
@@ -55,6 +71,12 @@ export function SettingsPage({
   userSounds,
   onImportSound,
   onDeleteSound,
+  updaterState,
+  updaterMessage,
+  currentVersion,
+  availableVersion,
+  onCheckForUpdates,
+  onInstallUpdate,
 }: SettingsPageProps) {
   const [form, setForm] = useState<Settings>(settings);
   const [saved, setSaved] = useState(false);
@@ -198,6 +220,80 @@ export function SettingsPage({
               <span className="w-14 text-sm text-muted-foreground">sessões</span>
             </div>
           </div>
+        </div>
+
+        <div className="flex flex-col gap-5 rounded-xl border border-border bg-card p-6">
+          <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">
+            Atualizações
+          </p>
+
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-medium text-foreground">
+              Verificar ao abrir o app
+            </label>
+            <button
+              type="button"
+              onClick={() =>
+                setForm((f) => ({
+                  ...f,
+                  auto_update_enabled: f.auto_update_enabled ? 0 : 1,
+                }))
+              }
+              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
+                form.auto_update_enabled
+                  ? "bg-accent-work"
+                  : "bg-border"
+              }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                  form.auto_update_enabled ? "translate-x-5" : "translate-x-0"
+                }`}
+              />
+            </button>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-1">
+              <span className="text-sm font-medium text-foreground">Versão atual</span>
+              <span className="text-xs text-muted-foreground">
+                {currentVersion ?? "Não disponível"}
+              </span>
+            </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onCheckForUpdates}
+              disabled={updaterState === "checking" || updaterState === "installing"}
+            >
+              <RefreshCw
+                className={`h-4 w-4 ${
+                  updaterState === "checking" ? "animate-spin" : ""
+                }`}
+              />
+              Verificar atualização
+            </Button>
+          </div>
+
+          {availableVersion && updaterState === "available" ? (
+            <div className="flex items-center justify-between rounded-lg border border-accent-work/40 bg-accent-work/10 px-3 py-2">
+              <span className="text-sm text-foreground">
+                Nova versão disponível: {availableVersion}
+              </span>
+              <Button
+                size="sm"
+                onClick={onInstallUpdate}
+              >
+                <Download className="h-4 w-4" />
+                Atualizar agora
+              </Button>
+            </div>
+          ) : null}
+
+          {updaterMessage ? (
+            <p className="text-xs text-muted-foreground">{updaterMessage}</p>
+          ) : null}
         </div>
 
         <div className="flex flex-col gap-5 rounded-xl border border-border bg-card p-6">

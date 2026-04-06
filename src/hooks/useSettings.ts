@@ -29,7 +29,8 @@ export function useSettings() {
         pomodoros_before_long_break = $4,
         sound_enabled = $5,
         sound_source = $6,
-        sound_volume = $7
+        sound_volume = $7,
+        auto_update_enabled = $8
       WHERE id = 1`,
       [
         newSettings.work_duration,
@@ -39,6 +40,7 @@ export function useSettings() {
         newSettings.sound_enabled,
         newSettings.sound_source,
         newSettings.sound_volume,
+        newSettings.auto_update_enabled,
       ]
     );
     setSettings(newSettings);

@@ -4,11 +4,14 @@ import { PrimaryDownloadLink } from "./PrimaryDownloadLink";
 
 const GITHUB_REPO = "SrWalkerB/duck-pomodoro";
 const RELEASES_URL = `https://api.github.com/repos/${GITHUB_REPO}/releases`;
+const REPO_API_URL = `https://api.github.com/repos/${GITHUB_REPO}`;
 
 type GitHubAsset = {
   name: string;
   browser_download_url: string;
   size: number;
+  /** Contagem mantida pelo GitHub para downloads diretos do asset */
+  download_count?: number;
 };
 
 type GitHubRelease = {
@@ -28,12 +31,33 @@ type DownloadItem = {
 
 export const revalidate = 300;
 
+async function getGitHubStarCount(): Promise<number | null> {
+  try {
+    const response = await fetch(REPO_API_URL, {
+      headers: {
+        Accept: "application/vnd.github+json",
+      },
+      next: { revalidate },
+    });
+    if (!response.ok) {
+      return null;
+    }
+    const data = (await response.json()) as { stargazers_count?: number };
+    return typeof data.stargazers_count === "number"
+      ? data.stargazers_count
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 async function getLatestReleaseAssets() {
   const emptyResult = {
     releaseTag: null as string | null,
     releaseUrl: `https://github.com/${GITHUB_REPO}/releases`,
     linuxItems: [] as DownloadItem[],
     windowsItems: [] as DownloadItem[],
+    installerDownloadTotal: 0,
   };
 
   try {
@@ -95,11 +119,27 @@ async function getLatestReleaseAssets() {
           extensionPriority.indexOf(a.ext) - extensionPriority.indexOf(b.ext),
       );
 
+    const installerExts = new Set([
+      ".deb",
+      ".appimage",
+      ".rpm",
+      ".exe",
+      ".msi",
+    ]);
+    let installerDownloadTotal = 0;
+    for (const asset of latestRelease.assets) {
+      const ext = getExtension(asset.name);
+      if (ext && installerExts.has(ext)) {
+        installerDownloadTotal += asset.download_count ?? 0;
+      }
+    }
+
     return {
       releaseTag: latestRelease.tag_name,
       releaseUrl: latestRelease.html_url || emptyResult.releaseUrl,
       linuxItems,
       windowsItems,
+      installerDownloadTotal,
     };
   } catch {
     return emptyResult;
@@ -233,9 +273,48 @@ function StatBlock({
   );
 }
 
+function InstallerDownloadRow({ item }: { item: DownloadItem }) {
+  return (
+    <a
+      href={item.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex items-center justify-between gap-3 rounded-md px-2 py-1.5 text-xs text-muted transition-colors hover:bg-black/20 hover:text-foreground"
+    >
+      <span className="font-medium text-foreground/90">{item.ext}</span>
+      <span className="shrink-0 tabular-nums text-foreground/80">
+        {item.sizeLabel}
+      </span>
+    </a>
+  );
+}
+
+function GitHubStarIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      className={className}
+      fill="currentColor"
+      aria-hidden
+    >
+      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+    </svg>
+  );
+}
+
 export default async function LandingPage() {
-  const { releaseTag, releaseUrl, linuxItems, windowsItems } =
-    await getLatestReleaseAssets();
+  const [
+    {
+      releaseTag,
+      releaseUrl,
+      linuxItems,
+      windowsItems,
+      installerDownloadTotal,
+    },
+    starCount,
+  ] = await Promise.all([getLatestReleaseAssets(), getGitHubStarCount()]);
   const linuxPrimaryUrl = linuxItems[0]?.url ?? null;
   const windowsPrimaryUrl = windowsItems[0]?.url ?? null;
 
@@ -324,7 +403,7 @@ export default async function LandingPage() {
             depender do navegador.
           </p>
 
-          <div className="animate-fade-in-up delay-400 mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
+          <div className="animate-fade-in-up delay-500 mt-10 flex flex-col items-center justify-center gap-4">
             <PrimaryDownloadLink
               windowsUrl={windowsPrimaryUrl}
               linuxUrl={linuxPrimaryUrl}
@@ -345,7 +424,23 @@ export default async function LandingPage() {
                 <polyline points="7 10 12 15 17 10" />
                 <line x1="12" y1="15" x2="12" y2="3" />
               </svg>
-              Baixar gratuitamente
+              <span className="flex items-center gap-2">
+                Baixar gratuitamente
+                {(linuxItems.length > 0 || windowsItems.length > 0) &&
+                installerDownloadTotal > 0 ? (
+                  <span
+                    className="inline-flex items-center gap-1 rounded-full bg-black/20 px-2.5 py-0.5 text-xs font-semibold tabular-nums text-white"
+                    title={`${installerDownloadTotal.toLocaleString("pt-BR")} downloads no total nesta versão (GitHub)`}
+                  >
+                    {installerDownloadTotal.toLocaleString("pt-BR")}
+                    <span className="font-medium opacity-90">
+                      {installerDownloadTotal === 1
+                        ? "download"
+                        : "downloads"}
+                    </span>
+                  </span>
+                ) : null}
+              </span>
             </PrimaryDownloadLink>
             <a
               href="https://github.com/SrWalkerB/duck-pomodoro"
@@ -361,7 +456,15 @@ export default async function LandingPage() {
               >
                 <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
               </svg>
-              Ver no GitHub
+              <span className="flex items-center gap-2">
+                Ver no GitHub
+                {starCount !== null ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-foreground/10 px-2.5 py-0.5 text-xs font-semibold tabular-nums text-foreground/90">
+                    <GitHubStarIcon className="h-3.5 w-3.5 text-amber-400/90" />
+                    {starCount.toLocaleString("pt-BR")}
+                  </span>
+                ) : null}
+              </span>
             </a>
           </div>
         </div>
@@ -729,26 +832,6 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      {/* ── TECH STRIP ── */}
-      <section className="border-y border-border bg-surface/50 px-6 py-20 md:px-16">
-        <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-center gap-x-16 gap-y-8">
-          {[
-            { name: "Tauri 2", desc: "Backend nativo" },
-            { name: "React 19", desc: "Interface reativa" },
-            { name: "Rust", desc: "Performance real" },
-            { name: "SQLite", desc: "Dados locais" },
-            { name: "Tailwind", desc: "Estilo moderno" },
-          ].map((tech) => (
-            <div key={tech.name} className="text-center">
-              <div className="font-display text-lg font-semibold tracking-tight">
-                {tech.name}
-              </div>
-              <div className="mt-0.5 text-xs text-muted">{tech.desc}</div>
-            </div>
-          ))}
-        </div>
-      </section>
-
       {/* ── STATS ── */}
       <section className="px-6 py-32 md:px-16">
         <div className="mx-auto grid max-w-3xl grid-cols-3 gap-8">
@@ -822,16 +905,7 @@ export default async function LandingPage() {
               {linuxItems.length > 0 ? (
                 <div className="space-y-1.5">
                   {linuxItems.map((item) => (
-                    <a
-                      key={item.name}
-                      href={item.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center justify-between rounded-md px-2 py-1 text-xs text-muted transition-colors hover:bg-black/20 hover:text-foreground"
-                    >
-                      <span>{item.ext}</span>
-                      <span>{item.sizeLabel}</span>
-                    </a>
+                    <InstallerDownloadRow key={item.name} item={item} />
                   ))}
                 </div>
               ) : (
@@ -868,16 +942,7 @@ export default async function LandingPage() {
               {windowsItems.length > 0 ? (
                 <div className="space-y-1.5">
                   {windowsItems.map((item) => (
-                    <a
-                      key={item.name}
-                      href={item.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center justify-between rounded-md px-2 py-1 text-xs text-muted transition-colors hover:bg-black/20 hover:text-foreground"
-                    >
-                      <span>{item.ext}</span>
-                      <span>{item.sizeLabel}</span>
-                    </a>
+                    <InstallerDownloadRow key={item.name} item={item} />
                   ))}
                 </div>
               ) : (
@@ -908,9 +973,15 @@ export default async function LandingPage() {
               href="https://github.com/SrWalkerB/duck-pomodoro"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm text-muted transition-colors hover:text-foreground"
+              className="inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-foreground"
             >
               GitHub
+              {starCount !== null ? (
+                <span className="inline-flex items-center gap-0.5 tabular-nums">
+                  <GitHubStarIcon className="h-3.5 w-3.5 text-amber-400/85" />
+                  {starCount.toLocaleString("pt-BR")}
+                </span>
+              ) : null}
             </a>
             <a
               href="https://github.com/SrWalkerB/duck-pomodoro/issues"
