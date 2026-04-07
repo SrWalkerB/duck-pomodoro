@@ -62,6 +62,14 @@ jobs:
           test -n "${{ secrets.TAURI_UPDATER_PROD_PUBKEY }}"
           test -n "${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}"
 
+      - name: Normalize updater public key
+        id: normalize_updater
+        shell: bash
+        run: |
+          PUBKEY="$(node scripts/normalize-updater-pubkey.mjs "${{ secrets.TAURI_UPDATER_PROD_PUBKEY }}")"
+          echo "pubkey=$PUBKEY" >> "$GITHUB_OUTPUT"
+          echo "endpoint=${{ secrets.TAURI_UPDATER_PROD_ENDPOINT }}" >> "$GITHUB_OUTPUT"
+
       - name: Build and publish Tauri app
         uses: tauri-apps/tauri-action@v0
         env:
@@ -69,7 +77,7 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           TAURI_CONFIG: >-
-            {"bundle":{"createUpdaterArtifacts":true},"plugins":{"updater":{"pubkey":"${{ secrets.TAURI_UPDATER_PROD_PUBKEY }}","endpoints":["${{ secrets.TAURI_UPDATER_PROD_ENDPOINT }}"]}}}
+            {"bundle":{"createUpdaterArtifacts":true},"plugins":{"updater":{"pubkey":"${{ steps.normalize_updater.outputs.pubkey }}","endpoints":["${{ steps.normalize_updater.outputs.endpoint }}"]}}}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "Duck Pomodoro ${{ github.ref_name }}"

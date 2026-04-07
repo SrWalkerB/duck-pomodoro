@@ -13,17 +13,31 @@ const endpointEnv = `TAURI_UPDATER_${suffix}_ENDPOINT`;
 const pubkeyEnv = `TAURI_UPDATER_${suffix}_PUBKEY`;
 
 const endpoint = process.env[endpointEnv];
-const pubkey = process.env[pubkeyEnv];
+const pubkeyRaw = process.env[pubkeyEnv];
 
 if (!endpoint) {
   console.error(`Missing ${endpointEnv} environment variable.`);
   process.exit(1);
 }
 
-if (!pubkey) {
+if (!pubkeyRaw) {
   console.error(`Missing ${pubkeyEnv} environment variable.`);
   process.exit(1);
 }
+
+const nodeCmd = process.execPath;
+const normalizeResult = spawnSync(
+  nodeCmd,
+  ["scripts/normalize-updater-pubkey.mjs", pubkeyRaw],
+  { encoding: "utf8" }
+);
+
+if (normalizeResult.status !== 0) {
+  process.stderr.write(normalizeResult.stderr || "Failed to normalize updater public key.\n");
+  process.exit(1);
+}
+
+const pubkey = (normalizeResult.stdout ?? "").trim();
 
 const tauriConfigPatch = {
   bundle: {

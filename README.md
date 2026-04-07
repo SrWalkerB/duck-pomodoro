@@ -99,6 +99,8 @@ Secrets exigidos no GitHub Actions (release):
 - `TAURI_SIGNING_PRIVATE_KEY`
 - `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`
 
+Obs.: `TAURI_UPDATER_PROD_PUBKEY` pode estar como linha `RW...`, conteúdo completo do `.pub` (2 linhas) ou `.pub` em base64; o workflow normaliza automaticamente.
+
 ## Scripts principais (raiz)
 
 - `npm run dev`: inicia frontend Vite
