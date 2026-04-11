@@ -71,35 +71,22 @@ npm run build:linux
 npm run build:windows
 ```
 
-Build com updater configurado por ambiente:
+### Assinatura e updater
 
-```bash
-# staging
-export TAURI_UPDATER_STAGING_ENDPOINT="https://.../latest.json"
-export TAURI_UPDATER_STAGING_PUBKEY="..."
-npm run build:staging
+O endpoint e a **chave pública** do updater ficam commitados em `src-tauri/tauri.conf.json` (em `plugins.updater`). A chave pública não é secreta — só a privada é.
 
-# produção
-export TAURI_UPDATER_PROD_ENDPOINT="https://.../latest.json"
-export TAURI_UPDATER_PROD_PUBKEY="..."
-npm run build:prod
-```
-
-Assinatura do updater (secreto, usado no release/build assinado):
+Para assinar builds localmente:
 
 ```bash
 export TAURI_SIGNING_PRIVATE_KEY="..."
 export TAURI_SIGNING_PRIVATE_KEY_PASSWORD="..."
+npm run tauri build
 ```
 
 Secrets exigidos no GitHub Actions (release):
 
-- `TAURI_UPDATER_PROD_ENDPOINT`
-- `TAURI_UPDATER_PROD_PUBKEY`
 - `TAURI_SIGNING_PRIVATE_KEY`
 - `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`
-
-Obs.: `TAURI_UPDATER_PROD_PUBKEY` pode estar como linha `RW...`, conteúdo completo do `.pub` (2 linhas) ou `.pub` em base64; o workflow normaliza automaticamente.
 
 ## Scripts principais (raiz)
 
@@ -107,8 +94,7 @@ Obs.: `TAURI_UPDATER_PROD_PUBKEY` pode estar como linha `RW...`, conteúdo compl
 - `npm run build`: build frontend
 - `npm run preview`: preview do build web
 - `npm run tauri <cmd>`: repassa comandos para o Tauri CLI
-- `npm run build:staging`: build Tauri com endpoint/pubkey de staging via env
-- `npm run build:prod`: build Tauri com endpoint/pubkey de produção via env
+- `npm run build:linux` / `npm run build:windows`: builds nativos
 
 ## Estrutura
 
