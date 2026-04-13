@@ -9,7 +9,7 @@ export interface BuiltInSound {
 }
 
 export const BUILT_IN_SOUNDS: BuiltInSound[] = [
-  { id: "rain", name: "Chuva", file: "/sounds/song_rain.m4a" },
+  { id: "rain", name: "Chuva", file: "/sounds/song_rain.ogg" },
 ];
 
 const mimeMap: Record<string, string> = {
